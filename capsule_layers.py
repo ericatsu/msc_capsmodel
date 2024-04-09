@@ -11,14 +11,11 @@ class CapsuleLayer(tf.keras.layers.Layer):
         self.num_capsule = num_capsule
         self.dim_capsule = dim_capsule
         self.routings = routings
-        # Additional initialization as needed
 
     def build(self, input_shape):
-        # Define weights and biases here
         self.kernel = self.add_weight(...)
         
     def call(self, inputs):
-        # Implement dynamic routing here
         return outputs
 
 class Mask(tf.keras.layers.Layer):
