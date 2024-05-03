@@ -13,10 +13,32 @@ class CapsuleLayer(tf.keras.layers.Layer):
         self.routings = routings
 
     def build(self, input_shape):
-        self.kernel = self.add_weight(...)
-        
+        self.kernel = self.add_weight(name='capsule_kernel',
+                                      shape=(input_shape[-1], self.num_capsule * self.dim_capsule),
+                                      initializer='glorot_uniform',
+                                      trainable=True)
+
     def call(self, inputs):
-        return outputs
+        # Expand the input tensor and compute predictions
+        inputs_expand = tf.expand_dims(inputs, 1)
+        inputs_tiled = tf.tile(inputs_expand, [1, self.num_capsule, 1])
+        inputs_transformed = tf.reshape(tf.matmul(inputs_tiled, self.kernel), [-1, self.num_capsule, self.dim_capsule])
+
+        # Initialize raw routing weights with zeros
+        b = tf.zeros(shape=[tf.shape(inputs_transformed)[0], self.num_capsule])
+
+        for i in range(self.routings):
+            c = tf.nn.softmax(b, axis=1)
+            s = tf.reduce_sum(c[:, :, None] * inputs_transformed, axis=1)
+            v = squash(s)
+            if i < self.routings - 1:
+                b += tf.matmul(inputs_transformed, v[:, None, :], transpose_a=True)
+
+        return v
+
+    def compute_output_shape(self, input_shape):
+        return (None, self.num_capsule, self.dim_capsule)
+
 
 class Mask(tf.keras.layers.Layer):
     def call(self, inputs, **kwargs):
@@ -30,3 +52,5 @@ def margin_loss(y_true, y_pred):
     L = y_true * tf.square(tf.maximum(0., 0.9 - y_pred)) + \
         0.5 * (1 - y_true) * tf.square(tf.maximum(0., y_pred - 0.1))
     return tf.reduce_mean(tf.reduce_sum(L, axis=1))
+
+
